@@ -34,6 +34,12 @@ function WeekRow({ week, defaultOpen }: { week: PlanWeek; defaultOpen: boolean }
       >
         <span className="flex items-center gap-3">
           <span className="font-medium text-slate-100">Week {week.weekNumber}</span>
+          <span className="text-xs text-slate-500">
+            {new Date(`${week.startDate}T00:00:00Z`).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
           <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
             {PHASE_LABEL[week.phase]}
           </span>
@@ -54,7 +60,13 @@ function WeekRow({ week, defaultOpen }: { week: PlanWeek; defaultOpen: boolean }
                   style={{ background: TYPE_COLOR[s.type] }}
                   aria-hidden="true"
                 />
-                <span className="w-10 text-slate-400">{DAY_LABELS[s.dayOffset]}</span>
+                <span className="w-28 text-slate-400">
+                  {DAY_LABELS[s.dayOffset]}{" "}
+                  {new Date(`${s.date}T00:00:00Z`).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
                 <span className="text-slate-100">{s.title}</span>
               </span>
               <span className="tabular-nums text-slate-400">

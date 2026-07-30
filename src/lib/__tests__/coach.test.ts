@@ -64,6 +64,16 @@ describe("recommendNextWorkout", () => {
     const rec = recommendNextWorkout(summary(), []);
     expect(rec.type).toBe("endurance");
   });
+
+  it("defers to an already-scheduled hard session on today's calendar", () => {
+    const rec = recommendNextWorkout(summary(), [], ["Coach: Tempo effort"]);
+    expect(rec.title).toContain("Tempo effort");
+  });
+
+  it("ignores calendar events that aren't hard sessions", () => {
+    const rec = recommendNextWorkout(summary(), [], ["Team meeting"]);
+    expect(rec.type).toBe("endurance");
+  });
 });
 
 describe("generateTrainingPlan", () => {
@@ -106,5 +116,20 @@ describe("generateTrainingPlan", () => {
   it("enforces a minimum plan length of 4 weeks", () => {
     const plan = generateTrainingPlan({ totalWeeks: 1, currentWeeklyHours: 4 });
     expect(plan.totalWeeks).toBe(4);
+  });
+
+  it("maps weeks and sessions to real, sequential dates from a given start date", () => {
+    const plan = generateTrainingPlan({
+      totalWeeks: 4,
+      currentWeeklyHours: 5,
+      startDate: "2026-08-03", // a Monday
+    });
+    expect(plan.weeks[0].startDate).toBe("2026-08-03");
+    expect(plan.weeks[1].startDate).toBe("2026-08-10");
+    const week1 = plan.weeks[0];
+    const tuesday = week1.sessions.find((s) => s.dayOffset === 1)!;
+    expect(tuesday.date).toBe("2026-08-04");
+    const sunday = week1.sessions.find((s) => s.dayOffset === 6)!;
+    expect(sunday.date).toBe("2026-08-09");
   });
 });

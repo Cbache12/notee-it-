@@ -10,12 +10,17 @@ import type { Status } from "./StatusTile";
 import { WorkoutCard } from "./WorkoutCard";
 import { PlanView } from "./PlanView";
 import { ActivityList } from "./ActivityList";
+import { GoalForm } from "./GoalForm";
+import { GoogleCalendarCard } from "./GoogleCalendarCard";
+import type { GoalSettings } from "@/lib/goal";
 
 interface DashboardData {
   athlete: { name: string; avatar: string | null };
   summary: LoadSummary;
   recommendation: WorkoutRecommendation;
   plan: TrainingPlan;
+  goal: GoalSettings | null;
+  googleConnected: boolean;
   activities: StravaActivity[];
 }
 
@@ -33,17 +38,19 @@ const FORM_STATUS: Record<LoadSummary["formBand"], { status: Status; label: stri
   overreaching: { status: "critical", label: "Overreaching", description: "Fatigue is well beyond fitness — prioritize recovery." },
 };
 
+async function loadDashboard(): Promise<DashboardData> {
+  const res = await fetch("/api/dashboard");
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Request failed");
+  return res.json();
+}
+
 export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/dashboard")
-      .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Request failed");
-        return res.json();
-      })
+    loadDashboard()
       .then((json) => {
         if (!cancelled) setData(json);
       })
@@ -54,6 +61,12 @@ export function Dashboard() {
       cancelled = true;
     };
   }, []);
+
+  function refresh() {
+    loadDashboard()
+      .then(setData)
+      .catch((err) => setError(err.message ?? "Failed to load dashboard"));
+  }
 
   if (error) {
     return (
@@ -110,10 +123,16 @@ export function Dashboard() {
 
       <WorkoutCard recommendation={data.recommendation} />
 
+      <GoalForm goal={data.goal} planWeeks={data.plan.totalWeeks} onSaved={refresh} />
+
+      <GoogleCalendarCard connected={data.googleConnected} />
+
       <LoadChart series={data.summary.series} />
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold text-slate-50">12-week training plan</h2>
+        <h2 className="mb-2 text-lg font-semibold text-slate-50">
+          {data.plan.totalWeeks}-week training plan
+        </h2>
         <PlanView plan={data.plan} />
       </section>
 
