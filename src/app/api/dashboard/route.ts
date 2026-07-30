@@ -11,8 +11,13 @@ import {
 } from "@/lib/strava";
 import { AthleteHrProfile, buildLoadSeries } from "@/lib/training-load";
 import { generateTrainingPlan, recommendNextWorkout } from "@/lib/coach";
+import { getGoalFromCookies } from "@/lib/goal-server";
+import { weeksUntilRace } from "@/lib/goal";
+import { getGoogleSessionFromCookies } from "@/lib/google-session-server";
+import { GOOGLE_SESSION_COOKIE } from "@/lib/google-session";
+import { ensureFreshGoogleSession, listUpcomingEvents } from "@/lib/google-calendar";
 
-const PLAN_WEEKS = 12;
+const DEFAULT_PLAN_WEEKS = 12;
 const DEFAULT_RESTING_HR = 60;
 
 function deriveHrProfile(zones: StravaZones, activities: StravaActivity[]): AthleteHrProfile {
@@ -32,6 +37,23 @@ function deriveHrProfile(zones: StravaZones, activities: StravaActivity[]): Athl
   };
 }
 
+async function todaysCalendarTitles(): Promise<{ titles: string[]; refreshedCookie: string | null }> {
+  const googleSession = getGoogleSessionFromCookies();
+  if (!googleSession) return { titles: [], refreshedCookie: null };
+
+  try {
+    const { session: fresh, refreshedCookie } = await ensureFreshGoogleSession(googleSession);
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+    const events = await listUpcomingEvents(fresh.accessToken, startOfDay, endOfDay);
+    return { titles: events.map((e) => e.summary ?? ""), refreshedCookie };
+  } catch (err) {
+    console.error("Failed to read Google Calendar events", err);
+    return { titles: [], refreshedCookie: null };
+  }
+}
+
 export async function GET() {
   const session = getSessionFromCookies();
   if (!session) {
@@ -43,10 +65,11 @@ export async function GET() {
     const token = freshSession.accessToken;
 
     const ninetyDaysAgo = Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60;
-    const [athlete, zones, activities] = await Promise.all([
+    const [athlete, zones, activities, calendar] = await Promise.all([
       getAthlete(token),
       getAthleteZones(token),
       listActivities(token, { after: ninetyDaysAgo, perPage: 200 }),
+      todaysCalendarTitles(),
     ]);
 
     const sortedActivities = [...activities].sort(
@@ -55,15 +78,16 @@ export async function GET() {
 
     const hrProfile = deriveHrProfile(zones, activities);
     const summary = buildLoadSeries(activities, hrProfile, 90);
-    const recommendation = recommendNextWorkout(summary, sortedActivities);
+    const recommendation = recommendNextWorkout(summary, sortedActivities, calendar.titles);
 
+    const goal = getGoalFromCookies();
+    const totalWeeks = weeksUntilRace(goal) ?? DEFAULT_PLAN_WEEKS;
     const twentyEightDaysAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;
     const recentHours = activities
       .filter((a) => new Date(a.start_date).getTime() >= twentyEightDaysAgo)
       .reduce((sum, a) => sum + a.moving_time / 3600, 0);
     const currentWeeklyHours = Math.max(1, recentHours / 4);
-
-    const plan = generateTrainingPlan({ totalWeeks: PLAN_WEEKS, currentWeeklyHours });
+    const plan = generateTrainingPlan({ totalWeeks, currentWeeklyHours });
 
     const body = {
       athlete: {
@@ -73,12 +97,23 @@ export async function GET() {
       summary,
       recommendation,
       plan,
+      goal,
+      googleConnected: !!getGoogleSessionFromCookies(),
       activities: sortedActivities.slice(0, 10),
     };
 
     const response = NextResponse.json(body);
     if (refreshedCookie) {
       response.cookies.set(SESSION_COOKIE, refreshedCookie, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 90,
+      });
+    }
+    if (calendar.refreshedCookie) {
+      response.cookies.set(GOOGLE_SESSION_COOKIE, calendar.refreshedCookie, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",

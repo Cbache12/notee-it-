@@ -18,14 +18,20 @@ export interface WorkoutRecommendation {
   intensity: string;
 }
 
+function isHardSessionTitle(title: string): boolean {
+  return /interval|tempo|threshold|vo2|race|long run|hard/i.test(title);
+}
+
 /**
  * Deterministic rule engine for "what should I do today". Prioritizes safety
- * (rest/recovery) when load risk or fatigue is elevated, and otherwise pushes
+ * (rest/recovery) when load risk or fatigue is elevated, otherwise defers to
+ * whatever hard session is already on today's calendar, and otherwise pushes
  * for high-output sessions (intervals/tempo) when the athlete is fresh.
  */
 export function recommendNextWorkout(
   summary: LoadSummary,
-  recentActivities: StravaActivity[]
+  recentActivities: StravaActivity[],
+  todaysCalendarTitles: string[] = []
 ): WorkoutRecommendation {
   const { riskBand, formBand, ctl, tsb, acwr } = summary;
 
@@ -52,6 +58,18 @@ export function recommendNextWorkout(
         "Recent load is elevated relative to your baseline fitness. Keep today conversational so fatigue clears before your next hard effort.",
       durationMin: 30,
       intensity: "Zone 1-2, easy conversational pace",
+    };
+  }
+
+  const scheduledHardTitle = todaysCalendarTitles.find(isHardSessionTitle);
+  if (scheduledHardTitle) {
+    return {
+      type: "intervals",
+      title: `Stick with today's plan: ${scheduledHardTitle}`,
+      rationale:
+        "You already have a hard session on today's calendar — load and form allow it, so no need to add anything on top of it.",
+      durationMin: 0,
+      intensity: "as scheduled",
     };
   }
 
@@ -106,6 +124,8 @@ export type Phase = "base" | "build" | "peak" | "taper";
 
 export interface PlannedSession {
   dayOffset: number; // 0 = Monday .. 6 = Sunday
+  /** ISO date (YYYY-MM-DD) this session falls on. */
+  date: string;
   type: WorkoutType;
   title: string;
   durationMin: number;
@@ -116,6 +136,8 @@ export interface PlanWeek {
   phase: Phase;
   targetHours: number;
   isRecoveryWeek: boolean;
+  /** ISO date (YYYY-MM-DD) of the Monday this week starts on. */
+  startDate: string;
   sessions: PlannedSession[];
 }
 
@@ -128,6 +150,26 @@ export interface PlanInput {
   totalWeeks: number;
   /** Baseline weekly training volume, in hours, to build the plan around (e.g. recent average). */
   currentWeeklyHours: number;
+  /** ISO date (YYYY-MM-DD) for the Monday week 1 starts on. Defaults to the most recent Monday. */
+  startDate?: string;
+}
+
+function toIsoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function mostRecentMonday(from: Date): Date {
+  const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  const day = d.getUTCDay(); // 0 = Sunday .. 6 = Saturday
+  const diffToMonday = (day + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - diffToMonday);
+  return d;
+}
+
+function addDays(d: Date, days: number): Date {
+  const next = new Date(d);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
 }
 
 function titleFor(type: WorkoutType): string {
@@ -195,10 +237,11 @@ const PHASE_TEMPLATES: Record<Phase, SessionTemplate[]> = {
   ],
 };
 
-function sessionsFor(phase: Phase, weeklyHours: number): PlannedSession[] {
+function sessionsFor(phase: Phase, weeklyHours: number, weekStart: Date): PlannedSession[] {
   const totalMinutes = weeklyHours * 60;
   return PHASE_TEMPLATES[phase].map((t) => ({
     dayOffset: t.dayOffset,
+    date: toIsoDate(addDays(weekStart, t.dayOffset)),
     type: t.type,
     title: titleFor(t.type),
     durationMin: t.weight > 0 ? Math.round(totalMinutes * t.weight) : 0,
@@ -245,6 +288,9 @@ export function generateTrainingPlan(input: PlanInput): TrainingPlan {
   const totalWeeks = Math.max(4, Math.round(input.totalWeeks));
   const { baseWeeks, buildWeeks, peakWeeks, taperWeeks } = splitPhases(totalWeeks);
   const taperStartWeek = totalWeeks - taperWeeks + 1;
+  const planStart = input.startDate
+    ? new Date(`${input.startDate}T00:00:00Z`)
+    : mostRecentMonday(new Date());
 
   const weeks: PlanWeek[] = [];
   let volume = input.currentWeeklyHours;
@@ -253,6 +299,7 @@ export function generateTrainingPlan(input: PlanInput): TrainingPlan {
   for (let w = 1; w <= totalWeeks; w++) {
     const phase = phaseFor(w, baseWeeks, buildWeeks, peakWeeks);
     const isRecoveryWeek = phase !== "taper" && w % 4 === 0;
+    const weekStart = addDays(planStart, (w - 1) * 7);
 
     if (phase === "taper") {
       const weekIntoTaper = w - taperStartWeek + 1;
@@ -270,7 +317,8 @@ export function generateTrainingPlan(input: PlanInput): TrainingPlan {
       phase,
       targetHours: Math.round(volume * 10) / 10,
       isRecoveryWeek,
-      sessions: sessionsFor(phase, volume),
+      startDate: toIsoDate(weekStart),
+      sessions: sessionsFor(phase, volume, weekStart),
     });
   }
 
