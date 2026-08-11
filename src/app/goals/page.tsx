@@ -29,6 +29,7 @@ export default function GoalsPage() {
   const [heightCm, setHeightCm] = useState("175");
   const [activity, setActivity] = useState<ActivityLevel>("moderate");
   const [weeklyChangeKg, setWeeklyChangeKg] = useState("-0.5");
+  const [calculatorError, setCalculatorError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/goal")
@@ -46,7 +47,17 @@ export default function GoalsPage() {
   }, []);
 
   function applyCalculator() {
-    if (!startWeightKg) return;
+    const missing: string[] = [];
+    if (!startWeightKg) missing.push("Weight");
+    if (!heightCm) missing.push("Height");
+    if (!age) missing.push("Age");
+    if (!weeklyChangeKg) missing.push("Weekly weight change");
+    if (missing.length > 0) {
+      setCalculatorError(`Fill in ${missing.join(", ")} first.`);
+      return;
+    }
+
+    setCalculatorError(null);
     const tdee = estimateTdee(
       { sex, weightKg: Number(startWeightKg), heightCm: Number(heightCm), age: Number(age) },
       activity
@@ -106,7 +117,14 @@ export default function GoalsPage() {
             </label>
             <label className="flex-1 text-sm text-slate-400">
               Weight (kg)
-              <input type="number" step="0.1" value={startWeightKg} onChange={(e) => setStartWeightKg(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-2 text-slate-100" />
+              <input
+                type="number"
+                step="any"
+                placeholder="Required"
+                value={startWeightKg}
+                onChange={(e) => setStartWeightKg(e.target.value)}
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-2 text-slate-100"
+              />
             </label>
           </div>
           <label className="text-sm text-slate-400">
@@ -121,8 +139,9 @@ export default function GoalsPage() {
           </label>
           <label className="text-sm text-slate-400">
             Weekly weight change (kg, negative to lose)
-            <input type="number" step="0.1" value={weeklyChangeKg} onChange={(e) => setWeeklyChangeKg(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-2 text-slate-100" />
+            <input type="number" step="any" value={weeklyChangeKg} onChange={(e) => setWeeklyChangeKg(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-2 py-2 text-slate-100" />
           </label>
+          {calculatorError && <p className="text-sm text-red-400">{calculatorError}</p>}
           <button type="button" onClick={applyCalculator} className="rounded border border-slate-700 px-3 py-2 text-sm hover:border-slate-500">
             Calculate & fill in below
           </button>
@@ -154,7 +173,7 @@ export default function GoalsPage() {
         <div className="flex gap-2">
           <label className="flex-1 text-sm text-slate-400">
             Goal weight (kg)
-            <input type="number" step="0.1" value={goalWeightKg} onChange={(e) => setGoalWeightKg(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100" />
+            <input type="number" step="any" value={goalWeightKg} onChange={(e) => setGoalWeightKg(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100" />
           </label>
           <label className="flex-1 text-sm text-slate-400">
             Plan length (weeks)
