@@ -63,7 +63,8 @@ export async function analyzeFoodPhoto(params: {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const model = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+  const thinkingBudget = Number(process.env.ANTHROPIC_THINKING_BUDGET || 2000);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -74,7 +75,8 @@ export async function analyzeFoodPhoto(params: {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: thinkingBudget + 1024,
+      thinking: { type: "enabled", budget_tokens: thinkingBudget },
       messages: [
         {
           role: "user",

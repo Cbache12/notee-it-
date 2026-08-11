@@ -20,6 +20,7 @@ export default function DiaryPage() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [goal, setGoal] = useState<Goal>(null);
   const [loading, setLoading] = useState(true);
+  const [addError, setAddError] = useState<string | null>(null);
 
   async function loadEntries(forDate: string) {
     setLoading(true);
@@ -44,14 +45,17 @@ export default function DiaryPage() {
   );
 
   async function handleAdd(meal: MealType, foodId: string, servings: number) {
+    setAddError(null);
     const res = await fetch("/api/log", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ foodId, meal, servings, date }),
     });
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      const entry = await res.json();
-      setEntries((prev) => [...prev, entry]);
+      setEntries((prev) => [...prev, data]);
+    } else {
+      setAddError(data.error ?? "Couldn't add that food, try again");
     }
   }
 
@@ -99,6 +103,8 @@ export default function DiaryPage() {
           </p>
         )}
       </div>
+
+      {addError && <p className="text-sm text-red-400">{addError}</p>}
 
       {loading ? (
         <p className="text-sm text-slate-500">Loading...</p>

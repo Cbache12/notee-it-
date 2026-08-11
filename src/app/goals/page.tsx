@@ -20,8 +20,9 @@ export default function GoalsPage() {
   const [fatG, setFatG] = useState("60");
   const [startWeightKg, setStartWeightKg] = useState("");
   const [goalWeightKg, setGoalWeightKg] = useState("");
-  const [planWeeks, setPlanWeeks] = useState(6);
+  const [planWeeks, setPlanWeeks] = useState("6");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // TDEE calculator inputs
   const [sex, setSex] = useState<Sex>("male");
@@ -42,7 +43,7 @@ export default function GoalsPage() {
         setFatG(String(goal.fatG));
         if (goal.startWeightKg) setStartWeightKg(String(goal.startWeightKg));
         if (goal.goalWeightKg) setGoalWeightKg(String(goal.goalWeightKg));
-        setPlanWeeks(goal.planWeeks);
+        setPlanWeeks(String(goal.planWeeks));
       });
   }, []);
 
@@ -76,7 +77,15 @@ export default function GoalsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaved(false);
-    await fetch("/api/goal", {
+    setSaveError(null);
+
+    const weeks = Number(planWeeks);
+    if (!planWeeks || !Number.isInteger(weeks) || weeks < 1 || weeks > 52) {
+      setSaveError("Plan length must be a whole number of weeks between 1 and 52.");
+      return;
+    }
+
+    const res = await fetch("/api/goal", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -86,9 +95,15 @@ export default function GoalsPage() {
         fatG: Number(fatG),
         startWeightKg: startWeightKg ? Number(startWeightKg) : undefined,
         goalWeightKg: goalWeightKg ? Number(goalWeightKg) : undefined,
-        planWeeks,
+        planWeeks: weeks,
       }),
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data.error ?? "Couldn't save your goals, try again");
+      return;
+    }
     setSaved(true);
   }
 
@@ -177,16 +192,20 @@ export default function GoalsPage() {
           </label>
           <label className="flex-1 text-sm text-slate-400">
             Plan length (weeks)
-            <select value={planWeeks} onChange={(e) => setPlanWeeks(Number(e.target.value))} className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100">
-              {[4, 5, 6, 7, 8].map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
+            <input
+              type="number"
+              step="1"
+              min={1}
+              max={52}
+              required
+              value={planWeeks}
+              onChange={(e) => setPlanWeeks(e.target.value)}
+              className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
+            />
           </label>
         </div>
 
+        {saveError && <p className="text-sm text-red-400">{saveError}</p>}
         {saved && <p className="text-sm text-emerald-400">Saved.</p>}
         <button type="submit" className="rounded bg-emerald-500 px-3 py-2 font-medium text-slate-950 hover:bg-emerald-400">
           Save goals
