@@ -6,11 +6,11 @@ import PhotoScan from "@/components/PhotoScan";
 import type { VisionNutritionResult } from "@/lib/vision-nutrition";
 
 const FIELDS = [
-  { name: "servingSize", label: "Serving size", step: "0.1" },
-  { name: "calories", label: "Calories", step: "1" },
-  { name: "proteinG", label: "Protein (g)", step: "0.1" },
-  { name: "carbsG", label: "Carbs (g)", step: "0.1" },
-  { name: "fatG", label: "Fat (g)", step: "0.1" },
+  { name: "servingSize", label: "Serving size" },
+  { name: "calories", label: "Calories" },
+  { name: "proteinG", label: "Protein (g)" },
+  { name: "carbsG", label: "Carbs (g)" },
+  { name: "fatG", label: "Fat (g)" },
 ] as const;
 
 export default function NewFoodPage() {
@@ -30,14 +30,15 @@ export default function NewFoodPage() {
   const [scanNote, setScanNote] = useState<string | null>(null);
 
   function handleScanResult(result: VisionNutritionResult) {
+    const round1 = (n: number) => Math.round(n * 10) / 10;
     setName(result.name);
     setServingUnit(result.servingUnit);
     setValues({
-      servingSize: String(result.servingSize),
+      servingSize: String(round1(result.servingSize)),
       calories: String(Math.round(result.calories)),
-      proteinG: String(result.proteinG),
-      carbsG: String(result.carbsG),
-      fatG: String(result.fatG),
+      proteinG: String(round1(result.proteinG)),
+      carbsG: String(round1(result.carbsG)),
+      fatG: String(round1(result.fatG)),
     });
     setScanNote(result.note ?? "Filled in from a photo scan — double-check before saving.");
   }
@@ -102,7 +103,7 @@ export default function NewFoodPage() {
               type="number"
               required
               min={0}
-              step="0.1"
+              step="any"
               value={values.servingSize}
               onChange={(e) => setValues((v) => ({ ...v, servingSize: e.target.value }))}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
@@ -126,7 +127,7 @@ export default function NewFoodPage() {
               type="number"
               required
               min={0}
-              step={field.step}
+              step="any"
               value={values[field.name]}
               onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
               className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
