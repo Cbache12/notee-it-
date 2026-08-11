@@ -63,7 +63,7 @@ export default function WeightPage() {
           Weight (kg)
           <input
             type="number"
-            step="0.1"
+            step="any"
             min={0}
             required
             value={weight}
