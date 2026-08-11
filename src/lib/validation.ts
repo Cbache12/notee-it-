@@ -40,7 +40,7 @@ export const goalSchema = z.object({
   fatG: z.number().int().min(0).max(1000),
   startWeightKg: z.number().positive().max(500).optional(),
   goalWeightKg: z.number().positive().max(500).optional(),
-  planWeeks: z.number().int().min(4).max(8).optional(),
+  planWeeks: z.number().int().min(1).max(52).optional(),
 });
 
 export const photoAnalyzeSchema = z.object({

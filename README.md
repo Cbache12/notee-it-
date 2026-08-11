@@ -17,9 +17,10 @@ so your history persists across devices pointed at the same server.
 - **TDEE calculator & goals** — estimate maintenance calories (Mifflin-St Jeor)
   and get a suggested calorie/macro split for a target weekly rate of weight
   change.
-- **Activity plan** — a 4-8 week plan with a daily step target that ramps up
-  toward 12,000/day, plus incline treadmill walks (15 → 20 → 30 min) layered
-  onto the final 3 weeks.
+- **Activity plan** — a plan over however many weeks you choose, integrating a
+  daily step target that ramps up toward 12,000/day, incline treadmill walks
+  (15 → 20 → 30 min) layered onto the final 3 weeks, your calorie target, and
+  a projected weight for each week on a straight line to your goal weight.
 - **Photo scanning** (optional) — on the "New food" page, snap a photo of a
   nutrition label to auto-fill exact values, or a photo of a meal/plate to get
   an AI-estimated nutrition breakdown. Requires an `ANTHROPIC_API_KEY`; the
@@ -87,4 +88,7 @@ npm run build
   sends the uploaded image straight to the Claude API with a mode-specific
   prompt (exact-read for labels, best-effort estimate for meals) and validates
   the structured JSON it returns before handing it to the New Food form to
-  pre-fill — you always review and can edit before saving.
+  pre-fill — you always review and can edit before saving. Uses `claude-opus-5`
+  with extended thinking by default for accuracy; both are configurable via
+  `ANTHROPIC_MODEL` / `ANTHROPIC_THINKING_BUDGET` if you'd rather trade accuracy
+  for lower cost.

@@ -34,3 +34,21 @@ export function generateActivityPlan(weeks: number): PlanWeek[] {
   }
   return result;
 }
+
+/**
+ * Projects body weight for a given week along a straight-line glide path
+ * from startWeightKg to goalWeightKg over totalWeeks, reaching goalWeightKg
+ * exactly at the end of the plan. Clamped so weeks beyond the plan length
+ * don't overshoot the goal.
+ */
+export function projectedWeightForWeek(params: {
+  week: number;
+  startWeightKg: number;
+  goalWeightKg: number;
+  totalWeeks: number;
+}): number {
+  const { week, startWeightKg, goalWeightKg, totalWeeks } = params;
+  if (totalWeeks <= 0) return startWeightKg;
+  const progress = Math.min(1, Math.max(0, week) / totalWeeks);
+  return startWeightKg + (goalWeightKg - startWeightKg) * progress;
+}
