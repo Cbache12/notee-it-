@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Single-user app: no accounts. Goal is a singleton row (id "singleton").
+model Goal {
+  id            String   @id @default("singleton")
+  calories      Int
+  proteinG      Int
+  carbsG        Int
+  fatG          Int
+  startWeightKg Float?
+  goalWeightKg  Float?
+  // Length in weeks (4-8) of the step + treadmill activity plan on /plan.
+  planWeeks     Int      @default(6)
+  updatedAt     DateTime @updatedAt
+}
+
+enum FoodSource {
+  CUSTOM
+  OFF
+  RECIPE
+}
+
+// Nutrition values are always stored per one "serving" of servingSize/servingUnit.
+model Food {
+  id          String     @id @default(cuid())
+  source      FoodSource @default(CUSTOM)
+  barcode     String?
+  brand       String?
+  name        String
+  servingSize Float
+  servingUnit String     @default("g")
+  calories    Float
+  proteinG    Float
+  carbsG      Float
+  fatG        Float
+  fiberG      Float?
+  sugarG      Float?
+  sodiumMg    Float?
+  createdAt   DateTime   @default(now())
+
+  logEntries   LogEntry[]
+  recipeUsedIn RecipeIngredient[]
+  recipeFor    Recipe?            @relation("RecipeFood")
+
+  @@index([barcode])
+  @@index([name])
+}
+
+model Recipe {
+  id        String   @id @default(cuid())
+  name      String
+  servings  Float    @default(1)
+  createdAt DateTime @default(now())
+
+  // Generated Food row representing "1 serving of this recipe", kept in
+  // sync whenever ingredients change so recipes can be logged like any food.
+  foodId String @unique
+  food   Food   @relation("RecipeFood", fields: [foodId], references: [id], onDelete: Cascade)
+
+  ingredients RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodId   String
+  food     Food   @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  servings Float
+
+  @@index([recipeId])
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model LogEntry {
+  id        String   @id @default(cuid())
+  foodId    String
+  food      Food     @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  meal      MealType
+  servings  Float
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  weightKg  Float
+  createdAt DateTime @default(now())
+
+  @@unique([date])
+}
