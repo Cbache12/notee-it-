@@ -45,9 +45,10 @@ model Food {
   sodiumMg    Float?
   createdAt   DateTime   @default(now())
 
-  logEntries   LogEntry[]
-  recipeUsedIn RecipeIngredient[]
-  recipeFor    Recipe?            @relation("RecipeFood")
+  logEntries      LogEntry[]
+  recipeUsedIn    RecipeIngredient[]
+  recipeFor       Recipe?            @relation("RecipeFood")
+  savedMealUsedIn SavedMealItem[]
 
   @@index([barcode])
   @@index([name])
@@ -95,6 +96,28 @@ model LogEntry {
   createdAt DateTime @default(now())
 
   @@index([date])
+}
+
+// A reusable named group of foods (e.g. "chicken + rice lunch") that can be
+// re-logged into any meal slot. Editing servings when reusing a saved meal
+// only affects that day's log entries, never this template.
+model SavedMeal {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  items SavedMealItem[]
+}
+
+model SavedMealItem {
+  id          String    @id @default(cuid())
+  savedMealId String
+  savedMeal   SavedMeal @relation(fields: [savedMealId], references: [id], onDelete: Cascade)
+  foodId      String
+  food        Food      @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  servings    Float
+
+  @@index([savedMealId])
 }
 
 model WeightEntry {
