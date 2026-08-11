@@ -54,3 +54,9 @@ export type Recipe = {
   food: Food;
   ingredients: { id: string; foodId: string; servings: number; food: Food }[];
 };
+
+export type SavedMeal = {
+  id: string;
+  name: string;
+  items: { id: string; foodId: string; servings: number; food: Food }[];
+};

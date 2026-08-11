@@ -12,6 +12,10 @@ so your history persists across devices pointed at the same server.
 - **Custom foods & recipes** — create your own foods, or build recipes from a
   mix of foods/custom foods; each recipe generates a "per serving" food you can
   log like anything else.
+- **Saved meals** — after logging a few foods into a meal, save that combo by
+  name; reusing it later shows each food with an editable serving amount
+  (e.g. bump up the chicken) before logging them all at once — editing never
+  touches the saved template.
 - **Weight tracking** — log body weight over time with a trend chart against
   your goal weight.
 - **TDEE calculator & goals** — estimate maintenance calories (Mifflin-St Jeor)
@@ -47,15 +51,22 @@ so your history persists across devices pointed at the same server.
    npm run db:push
    ```
 
-4. Run the dev server:
+4. Whenever `prisma/schema.prisma` changes (like it did for saved meals),
+   re-run `npm run db:push` against your database to add the new tables/columns.
+   If you're hosting on Vercel with a remote database, run it locally once
+   with `DATABASE_URL` set to your production connection string — the build
+   only runs `prisma generate`, not `db push`, so schema changes don't apply
+   themselves.
+
+5. Run the dev server:
 
    ```bash
    npm run dev
    ```
 
-5. Open <http://localhost:3000> — set your goals first at `/goals`.
+6. Open <http://localhost:3000> — set your goals first at `/goals`.
 
-6. (Optional) To enable photo scanning of nutrition labels/meals, add an
+7. (Optional) To enable photo scanning of nutrition labels/meals, add an
    `ANTHROPIC_API_KEY` from <https://console.anthropic.com/settings/keys> to
    your `.env` and restart the dev server.
 

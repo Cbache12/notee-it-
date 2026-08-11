@@ -49,6 +49,18 @@ export const photoAnalyzeSchema = z.object({
   mode: z.enum(["label", "meal"]),
 });
 
+export const savedMealSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  items: z
+    .array(
+      z.object({
+        foodId: z.string().min(1),
+        servings: z.number().positive(),
+      })
+    )
+    .min(1),
+});
+
 export const recipeSchema = z.object({
   name: z.string().trim().min(1).max(200),
   servings: z.number().positive(),
