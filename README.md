@@ -20,6 +20,10 @@ so your history persists across devices pointed at the same server.
 - **Activity plan** — a 4-8 week plan with a daily step target that ramps up
   toward 12,000/day, plus incline treadmill walks (15 → 20 → 30 min) layered
   onto the final 3 weeks.
+- **Photo scanning** (optional) — on the "New food" page, snap a photo of a
+  nutrition label to auto-fill exact values, or a photo of a meal/plate to get
+  an AI-estimated nutrition breakdown. Requires an `ANTHROPIC_API_KEY`; the
+  rest of the app works fine without it.
 
 ## Setup
 
@@ -50,6 +54,10 @@ so your history persists across devices pointed at the same server.
 
 5. Open <http://localhost:3000> — set your goals first at `/goals`.
 
+6. (Optional) To enable photo scanning of nutrition labels/meals, add an
+   `ANTHROPIC_API_KEY` from <https://console.anthropic.com/settings/keys> to
+   your `.env` and restart the dev server.
+
 ## Testing
 
 ```bash
@@ -75,3 +83,8 @@ npm run build
   (6,000 → 12,000/day) with treadmill incline-walk sessions added to the last
   3 weeks of the plan, shown on `/plan` once a goal weight and plan length are
   set on `/goals`.
+- **Photo scanning** (`src/lib/vision-nutrition.ts`, `src/app/api/photo/analyze`):
+  sends the uploaded image straight to the Claude API with a mode-specific
+  prompt (exact-read for labels, best-effort estimate for meals) and validates
+  the structured JSON it returns before handing it to the New Food form to
+  pre-fill — you always review and can edit before saving.

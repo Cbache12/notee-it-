@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PhotoScan from "@/components/PhotoScan";
+import type { VisionNutritionResult } from "@/lib/vision-nutrition";
 
 const FIELDS = [
   { name: "servingSize", label: "Serving size", step: "0.1" },
@@ -25,6 +27,20 @@ export default function NewFoodPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scanNote, setScanNote] = useState<string | null>(null);
+
+  function handleScanResult(result: VisionNutritionResult) {
+    setName(result.name);
+    setServingUnit(result.servingUnit);
+    setValues({
+      servingSize: String(result.servingSize),
+      calories: String(Math.round(result.calories)),
+      proteinG: String(result.proteinG),
+      carbsG: String(result.carbsG),
+      fatG: String(result.fatG),
+    });
+    setScanNote(result.note ?? "Filled in from a photo scan — double-check before saving.");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +74,11 @@ export default function NewFoodPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="mb-6 text-xl font-semibold">New food</h1>
+      <h1 className="mb-4 text-xl font-semibold">New food</h1>
+      <div className="mb-6">
+        <PhotoScan onResult={handleScanResult} />
+        {scanNote && <p className="mt-2 text-sm text-amber-400">{scanNote}</p>}
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="text"

@@ -43,6 +43,12 @@ export const goalSchema = z.object({
   planWeeks: z.number().int().min(4).max(8).optional(),
 });
 
+export const photoAnalyzeSchema = z.object({
+  base64Image: z.string().min(1),
+  mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  mode: z.enum(["label", "meal"]),
+});
+
 export const recipeSchema = z.object({
   name: z.string().trim().min(1).max(200),
   servings: z.number().positive(),
